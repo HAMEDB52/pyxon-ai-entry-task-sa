@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LYNCS AI — مساعد ذكي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- ══ LAYOUT ══ -->
+  <div class="app-container">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">◇</span>
+          <span class="logo-text">LYNCS AI</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-view="chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          <span>المحادثة</span>
+        </button>
+        <button class="nav-btn" data-view="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <span>السجل</span>
+        </button>
+        <button class="nav-btn" data-view="upload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="17,8 12,3 7,8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>رفع ملفات</span>
+        </button>
+        <button class="nav-btn" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+          <span>الإعدادات</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="theme-toggle" id="themeToggle" title="تبديل الوضع">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+          </svg>
+        </button>
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text">متصل</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="main-content">
+      
+      <!-- ═══ VIEW: CHAT ═══ -->
+      <section class="view view-chat active" id="view-chat">
+        <div class="chat-container">
+          
+          <!-- Messages -->
+          <div class="messages-container" id="messages">
+            <!-- Welcome Screen -->
+            <div class="welcome-screen" id="welcomeScreen">
+              <div class="welcome-logo">◇</div>
+              <h1 class="welcome-title">مرحباً بك في LYNCS AI</h1>
+              <p class="welcome-subtitle">مساعدك الذكي المدعوم بتقنية RAG</p>
+              
+              <div class="suggestions-grid" id="suggestions">
+                <!-- Dynamically loaded -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Area -->
+          <div class="input-container">
+            <div class="input-wrapper">
+              <textarea 
+                id="queryInput" 
+                class="input-field" 
+                placeholder="اسألني أي سؤال..." 
+                rows="1"
+                dir="rtl"
+              ></textarea>
+              <button class="send-btn" id="sendBtn" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22,2 15,22 11,13 2,9" />
+                </svg>
+              </button>
+            </div>
+            <p class="input-hint">اضغط Enter للإرسال · Shift+Enter لسطر جديد</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ═══ VIEW: HISTORY ═══ -->
+      <section class="view view-history" id="view-history">
+        <div class="page-container">
+          <div class="page-header">
+            <h2 class="page-title">سجل المحادثات</h2>
+            <button class="btn-text" id="clearHistory">مسح الكل</button>
+          </div>
+          <div class="history-container" id="historyList">
+            <p class="empty-state">لا توجد محادثات سابقة</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ VIEW: UPLOAD ═══ -->
+      <section class="view view-upload" id="view-upload">
+        <div class="page-container">
+          <div class="page-header">
+            <h2 class="page-title">رفع المستندات</h2>
+            <button class="btn-text" id="refreshFiles">تحديث</button>
+          </div>
+
+          <!-- Drop Zone -->
+          <div class="upload-zone" id="dropZone">
+            <div class="upload-zone-content">
+              <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="17,8 12,3 7,8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <p class="upload-title">اسحب الملفات هنا</p>
+              <p class="upload-subtitle">PDF · DOCX · PNG · JPG · MD — حتى 20 MB</p>
+              <button class="btn-primary" id="selectFilesBtn">اختر ملفات</button>
+              <input type="file" id="fileInput" multiple accept=".pdf,.docx,.png,.jpg,.jpeg,.md,.txt" hidden />
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="upload-options">
+            <label class="toggle-label">
+              <input type="checkbox" id="ingestToggle" checked />
+              <span class="toggle"></span>
+              <span>معالجة فورية</span>
+            </label>
+          </div>
+
+          <!-- Queue -->
+          <div class="upload-queue" id="uploadQueue" style="display:none">
+            <div class="queue-header">
+              <span id="queueTitle">الملفات المحددة</span>
+              <div class="queue-actions">
+                <button class="btn-text btn-text-danger" id="clearQueueBtn">مسح</button>
+                <button class="btn-primary" id="startUploadBtn">رفع</button>
+              </div>
+            </div>
+            <div class="queue-list" id="queueList"></div>
+          </div>
+
+          <!-- Results -->
+          <div class="upload-results" id="uploadResults" style="display:none">
+            <h3 class="results-title">نتائج الرفع</h3>
+            <div class="results-list" id="resultsList"></div>
+          </div>
+
+          <!-- Existing Files -->
+          <div class="existing-files">
+            <h3 class="files-title">الملفات الموجودة</h3>
+            <div class="files-list" id="filesList">
+              <p class="empty-state">جارٍ التحميل…</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ VIEW: SETTINGS ═══ -->
+      <section class="view view-settings" id="view-settings">
+        <div class="page-container">
+          <div class="page-header">
+            <h2 class="page-title">الإعدادات</h2>
+          </div>
+          
+          <div class="settings-grid" id="settingsGrid">
+            <div class="setting-card">
+              <h4 class="setting-card-title">حالة النظام</h4>
+              <div class="stats-grid">
+                <div class="stat-item">
+                  <span class="stat-label">القطع</span>
+                  <span class="stat-value" id="stat-chunks">—</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">المصادر</span>
+                  <span class="stat-value" id="stat-sources">—</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">النموذج</span>
+                  <span class="stat-value" id="stat-model">—</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">الحالة</span>
+                  <span class="stat-value" id="stat-status">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="setting-card">
+              <h4 class="setting-card-title">معلومات النظام</h4>
+              <div class="info-list">
+                <div class="info-item">
+                  <span class="info-label">الإصدار</span>
+                  <span class="info-value">1.0.0</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">النموذج</span>
+                  <span class="info-value" id="info-model">Gemini 2.5 Flash</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">قاعدة المعرفة</span>
+                  <span class="info-value" id="info-db">متصلة</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-primary" id="refreshStatus" style="margin-top: 20px;">تحديث الحالة</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ══ TOAST ══ -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
