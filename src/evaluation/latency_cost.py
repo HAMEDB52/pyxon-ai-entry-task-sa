@@ -204,7 +204,7 @@ class LatencyCostTracker:
         custom_pricing: dict[str, dict[str, float]] | None = None,
         log_dir: str | None = None,
     ):
-        self._model   = model or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self._model   = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self._pricing = {**MODEL_PRICING}
         if custom_pricing:
             self._pricing.update(custom_pricing)

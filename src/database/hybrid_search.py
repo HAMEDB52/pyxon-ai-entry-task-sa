@@ -10,6 +10,14 @@ from loguru import logger
 from src.database.vector_store import VectorStore
 from src.database.db_setup import get_connection
 
+# استخدم معالج التصريف العربي لتحسين البحث
+try:
+    from src.data_processing.arabic_lemmatizer import get_lemmatizer
+    HAS_LEMMATIZER = True
+except ImportError:
+    HAS_LEMMATIZER = False
+    logger.warning("⚠️ Arabic Lemmatizer غير متاح")
+
 
 # ============================================================
 # نتيجة البحث
@@ -68,7 +76,16 @@ class HybridSearch:
         """
         self.rrf_k        = rrf_k
         self.vector_store = VectorStore()
-        logger.info(f"✅ HybridSearch جاهز | RRF k={rrf_k}")
+        
+        # استخدم Arabic Lemmatizer لتحسين BM25
+        self.lemmatizer = None
+        if HAS_LEMMATIZER:
+            try:
+                self.lemmatizer = get_lemmatizer()
+            except Exception as e:
+                logger.warning(f"⚠️ فشل تحميل Lemmatizer: {e}")
+        
+        logger.info(f"✅ HybridSearch جاهز | RRF k={rrf_k} | Lemmatizer={'✓' if self.lemmatizer else '✗'}")
 
     # ============================================================
     # البحث الرئيسي
@@ -208,11 +225,24 @@ class HybridSearch:
 
             if not words:
                 return []
+            
+            # ✨ استخدم Arabic Lemmatizer لتحسين البحث
+            if self.lemmatizer:
+                lemmatized_words = []
+                for word in words:
+                    root = self.lemmatizer.get_root(word)
+                    if root and root != word:
+                        lemmatized_words.append(root)
+                    lemmatized_words.append(word)  # احفظ الأصلي أيضاً
+                # استخدم كلمات + جذورها للبحث
+                enhanced_words = list(dict.fromkeys(lemmatized_words))[:15]  # أقصى 15 كلمة
+            else:
+                enhanced_words = words
 
             src_filter = "AND source_file = %s" if source_file else ""
 
-            # ── المرحلة 1: tsvector 'simple' ──
-            tsq = " & ".join(words)
+            # ── المرحلة 1: tsvector 'simple' مع كلمات معززة ──
+            tsq = " & ".join(enhanced_words)
             try:
                 if source_file:
                     cur.execute(f"""
@@ -243,8 +273,8 @@ class HybridSearch:
 
             # ── المرحلة 2: ILIKE fallback إذا لا نتائج ──
             if not rows:
-                like_conditions = " OR ".join(["content ILIKE %s"] * len(words))
-                like_params     = [f"%{w}%" for w in words]
+                like_conditions = " OR ".join(["content ILIKE %s"] * len(enhanced_words))
+                like_params     = [f"%{w}%" for w in enhanced_words]
                 if source_file:
                     cur.execute(f"""
                         SELECT chunk_id, content, source_file, page_number,
@@ -303,16 +333,43 @@ class HybridSearch:
         bm25_weight    : float,
     ) -> dict[str, SearchResult]:
         """
-        دمج نتائج البحثين باستخدام RRF
+        دمج نتائج البحثين باستخدام RRF مع تحسينات إضافية
 
-        المعادلة: score(d) = Σ weight / (k + rank)
+        التحسينات:
+        1. تطبيع درجات VectorScore إلى 0-1
+        2. تطبيع درجات BM25 إلى 0-1
+        3. إضافة bonus score للنتائج التي تظهر في القائمتين
+        4. خصم النتائج بدون محتوى ذي معنى
+
+        المعادلة: score(d) = Σ weight / (k + rank) + bonus
         """
         merged: dict[str, SearchResult] = {}
+
+        # --- تطبيع درجات البحث المتجهي ---
+        vector_scores = [item.get("vector_score", 0.0) for item in vector_results]
+        max_vector = max(vector_scores) if vector_scores else 1.0
+        min_vector = min(vector_scores) if vector_scores else 0.0
+        vector_range = max_vector - min_vector if max_vector != min_vector else 1.0
+
+        # --- تطبيع درجات BM25 ---
+        bm25_scores = [item.get("bm25_score", 0.0) for item in bm25_results]
+        max_bm25 = max(bm25_scores) if bm25_scores else 1.0
+        min_bm25 = min(bm25_scores) if bm25_scores else 0.0
+        bm25_range = max_bm25 - min_bm25 if max_bm25 != min_bm25 else 1.0
 
         # --- معالجة نتائج البحث المتجهي ---
         for rank, item in enumerate(vector_results, start=1):
             cid   = item["chunk_id"]
+            
+            # تطبيع الدرجة
+            raw_score = item.get("vector_score", 0.0)
+            norm_score = (raw_score - min_vector) / vector_range if vector_range > 0 else 0.0
+            
+            # حساب درجة RRF
             score = vector_weight / (self.rrf_k + rank)
+            
+            # إضافة bonus للدرجة الطبيعية
+            score += norm_score * 0.1  # 10% وزن للدرجة الطبيعية
 
             if cid not in merged:
                 merged[cid] = SearchResult(
@@ -324,15 +381,28 @@ class HybridSearch:
                     summary        = item["summary"],
                     keywords       = item["keywords"],
                     metadata       = item["metadata"],
-                    vector_score   = item.get("vector_score", 0.0),
+                    vector_score   = float(raw_score),
                 )
-            merged[cid].rrf_score   += score
-            merged[cid].vector_score = item.get("vector_score", 0.0)
+            else:
+                # موجود مسبقاً → إضافة bonus
+                merged[cid].rrf_score += score * 0.5  # 50% bonus للظهور في القائمتين
+                merged[cid].vector_score = float(raw_score)
+            
+            merged[cid].rrf_score = score
 
         # --- معالجة نتائج البحث النصي ---
         for rank, item in enumerate(bm25_results, start=1):
             cid   = item["chunk_id"]
+            
+            # تطبيع الدرجة
+            raw_score = item.get("bm25_score", 0.0)
+            norm_score = (raw_score - min_bm25) / bm25_range if bm25_range > 0 else 0.0
+            
+            # حساب درجة RRF
             score = bm25_weight / (self.rrf_k + rank)
+            
+            # إضافة bonus للدرجة الطبيعية
+            score += norm_score * 0.1
 
             if cid not in merged:
                 merged[cid] = SearchResult(
@@ -344,8 +414,14 @@ class HybridSearch:
                     summary        = item["summary"],
                     keywords       = item["keywords"],
                     metadata       = item["metadata"],
+                    bm25_score     = float(raw_score),
                 )
-            merged[cid].rrf_score  += score
-            merged[cid].bm25_score  = item.get("bm25_score", 0.0)
+            else:
+                # موجود مسبقاً → إضافة bonus كبير
+                merged[cid].rrf_score += score * 0.5  # Bonus للظهور في القائمتين
+                merged[cid].rrf_score += norm_score * 0.2  # 20% وزن للدرجة الطبيعية
+                merged[cid].bm25_score = float(raw_score)
+            
+            merged[cid].rrf_score += score
 
         return merged

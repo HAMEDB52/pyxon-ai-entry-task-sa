@@ -10,8 +10,9 @@ load_dotenv()
 import os, re, time, uuid, asyncio, subprocess
 from pathlib import Path
 from typing  import Optional, List
+from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from loguru  import logger
@@ -94,7 +95,7 @@ async def get_status():
         status        = db.get("status", "unknown"),
         total_chunks  = db.get("total_chunks", 0),
         total_sources = db.get("total_sources", 0),
-        model         = os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+        model         = os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         version       = "1.0.0",
     )
 
@@ -158,16 +159,7 @@ async def query(req: QueryRequest):
         raise HTTPException(500, str(e))
 
 
-@app.get("/suggestions", tags=["RAG"])
-async def suggestions():
-    return {"suggestions": [
-        "ما هو إجمالي فاتورة INV-101؟",
-        "من هو العميل في فاتورة INV-102؟",
-        "هل تم استلام دفعة مقابل RCP-101؟",
-        "قارن بين فاتورتي INV-101 و INV-102",
-        "ما مجموع كل الفواتير المتاحة؟",
-        "ما طريقة الدفع في RCP-102؟",
-    ]}
+
 
 
 # ════════════════════════════════════
@@ -179,16 +171,23 @@ async def upload_files(
     files  : List[UploadFile] = File(...),
     ingest : bool             = Form(default=True),
     user_id: str              = Form(default="web_user"),
+    bg_tasks: BackgroundTasks = BackgroundTasks(),
 ):
+    """
+    ✅ رفع ملفات بسرعة مع معالجة متوازية
+    - حفظ الملفات: متوازي (سريع جداً)
+    - الإدخال: في الخلفية (لا تنتظري)
+    """
     start = time.time()
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     results: list[UploadResult] = []
 
+    # ── خطوة 1: حفظ الملفات بسرعة (بدون انتظار ingest) ──
+    files_to_ingest = []  # قائمة ملفات للإدخال في الخلفية
+
     for f in files:
-        # إصلاح encoding اسم الملف العربي (Latin-1 → UTF-8)
         raw_name = f.filename or "unknown"
         try:
-            # محاولة إصلاح Latin-1 encoding
             fname = raw_name.encode("latin-1").decode("utf-8")
         except (UnicodeEncodeError, UnicodeDecodeError):
             fname = raw_name
@@ -216,42 +215,51 @@ async def upload_files(
         try:
             dest.write_bytes(content)
             logger.info(f"💾 حُفظ: {fname} ({size_kb} KB)")
+            
+            # أضف للقائمة لإدخالها لاحقاً في الخلفية
+            if ingest and suffix not in {".txt"}:
+                files_to_ingest.append((dest, fname))
+                results.append(UploadResult(
+                    filename=fname, size_kb=size_kb,
+                    status="pending",
+                    message="💾 تم الحفظ | 🔄 الإدخال قيد التقدم...",
+                ))
+            else:
+                results.append(UploadResult(
+                    filename=fname, size_kb=size_kb, status="saved",
+                    message="تم الحفظ (بدون إدخال)",
+                ))
         except Exception as e:
             results.append(UploadResult(filename=fname, size_kb=size_kb, status="error", message=str(e)))
             continue
 
-        # إدخال فوري عبر subprocess ✅
-        if ingest and suffix not in {".txt"}:
-            n = await _ingest_via_subprocess(dest)
-            results.append(UploadResult(
-                filename=fname, size_kb=size_kb,
-                status="ingested" if n > 0 else "saved",
-                chunks=n,
-                message=f"✅ {n} قطعة" if n > 0 else "⚠️ الحفظ نجح، لكن الإدخال تعذّر — شغّل ingest_docs.py يدوياً",
-            ))
-        else:
-            results.append(UploadResult(
-                filename=fname, size_kb=size_kb, status="saved",
-                message="تم الحفظ — شغّل ingest_docs.py لاحقاً",
-            ))
+    # ── خطوة 2: إضف مهام الإدخال للخلفية (في نفس الوقت) ──
+    if files_to_ingest:
+        bg_tasks.add_task(_ingest_batch_background, files_to_ingest)
+        logger.info(f"🚀 تم إرسال {len(files_to_ingest)} ملف للإدخال في الخلفية")
 
-    ok   = sum(1 for r in results if r.status in ("saved", "ingested"))
+    ok   = sum(1 for r in results if r.status in ("saved", "pending", "ingested"))
     fail = len(results) - ok
-    logger.info(f"📤 رفع | ✅{ok} ❌{fail}")
-    return UploadResponse(uploaded=ok, failed=fail, results=results,
-                          elapsed_s=round(time.time()-start, 2))
+    elapsed = round(time.time() - start, 2)
+    
+    logger.info(f"📤 رفع سريع | ✅{ok} ❌{fail} | ⏱️ {elapsed}s")
+    return UploadResponse(uploaded=ok, failed=fail, results=results, elapsed_s=elapsed)
 
 
 @app.get("/files", tags=["Upload"])
 async def list_files():
+    """قائمة الملفات مع حالة الإدخال"""
     if not UPLOAD_DIR.exists():
         return {"files": [], "total": 0}
-    files = [
-        {"name": f.name, "size_kb": round(f.stat().st_size / 1024, 1),
-         "extension": f.suffix.lower()}
-        for f in sorted(UPLOAD_DIR.iterdir())
-        if f.is_file() and f.suffix.lower() in ALLOWED_EXT
-    ]
+    files = []
+    for f in sorted(UPLOAD_DIR.iterdir()):
+        if f.is_file() and f.suffix.lower() in ALLOWED_EXT:
+            files.append({
+                "name": f.name, 
+                "size_kb": round(f.stat().st_size / 1024, 1),
+                "extension": f.suffix.lower(),
+                "uploaded_at": time.ctime(f.stat().st_mtime),
+            })
     return {"files": files, "total": len(files)}
 
 
@@ -262,6 +270,64 @@ async def delete_file(filename: str):
         raise HTTPException(404, "الملف غير موجود")
     target.unlink()
     return {"deleted": target.name}
+
+
+# ════════════════════════════════════
+# Ingest في الخلفية (متوازي) ⚡
+# معالجة عدة ملفات في نفس الوقت
+# ════════════════════════════════════
+
+def _ingest_batch_background(files_to_ingest: list[tuple[Path, str]]) -> None:
+    """
+    معالجة متوازية للملفات في الخلفية (في thread منفصل).
+    يحسّن الأداء عند رفع عدة ملفات.
+    """
+    logger.info(f"🔄 بدء إدخال {len(files_to_ingest)} ملف في الخلفية...")
+    
+    # استخدم ThreadPoolExecutor لمعالجة متوازية (حتى 3 ملفات في نفس الوقت)
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        futures = {
+            executor.submit(_ingest_single_sync, dest, fname): fname 
+            for dest, fname in files_to_ingest
+        }
+        
+        for future in futures:
+            fname = futures[future]
+            try:
+                chunks_count = future.result(timeout=600)  # 10 دقائق لكل ملف
+                logger.success(f"✅ أكتمل إدخال: {fname} ({chunks_count} قطعة)")
+            except Exception as e:
+                logger.error(f"❌ فشل إدخال {fname}: {e}")
+
+
+def _ingest_single_sync(filepath: Path, filename: str) -> int:
+    """
+    إدخال ملف واحد بشكل متزامن (للاستخدام مع ThreadPoolExecutor).
+    """
+    try:
+        # استدعاء subprocess للإدخال (تجنب مشاكل import)
+        result = subprocess.run(
+            [sys.executable, "scripts/ingest_docs.py", "--file", str(filepath)],
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            timeout=600,
+            cwd=str(Path.cwd()),
+        )
+        
+        if result.returncode == 0:
+            n = _parse_chunks_count(result.stdout)
+            return max(n, 1)
+        else:
+            logger.warning(f"⚠️ subprocess فشل: {filename} | rc={result.returncode}")
+            return 0
+    except subprocess.TimeoutExpired:
+        logger.error(f"⏰ timeout: {filename}")
+        return 0
+    except Exception as e:
+        logger.error(f"❌ ingest error: {filename}: {e}")
+        return 0
 
 
 # ════════════════════════════════════
@@ -289,6 +355,8 @@ async def _ingest_via_subprocess(filepath: Path) -> int:
             lambda: subprocess.run(
                 [sys.executable, str(script), "--file", str(abs_path)],
                 capture_output=True, text=True,
+                encoding='utf-8',  # ✅ حدد الترميز صراحة
+                errors='replace',  # ✅ استبدل الأحرف التي لا يمكن فك تشفيرها
                 timeout=1800,  # 30 دقيقة للملفات الكبيرة
                 cwd=str(Path.cwd()),
                 env={**os.environ},

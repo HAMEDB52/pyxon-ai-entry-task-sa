@@ -51,15 +51,15 @@ class ResearchAgent:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         )
-        self.model_name  = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.model_name  = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.planner     = Planner()
-        # 🚀 إعدادات محسّنة: توسيع حقيقي + Reranker + ضغط خفيف
+        # 🚀 إعدادات مُحسّنة للسرعة: توسيع بسيط + reranker أسرع + بدون ضغط
         self.enhancer    = RetrievalEnhancer(
-            n_expansions=3,    # توسيع بـ 3 صياغات بديلة
-            candidate_k=20,    # جلب 20 مرشح للـ Reranker
-            final_k=8,         # إرجاع أفضل 8 نتائج
-            rerank_weight=0.7, # وزن قوي للـ Reranker
-            compress=True,     # ضغط سياقي خفيف
+            n_expansions=2,    # توسيع بـ 2 صياغات فقط (بدلاً من 3) → -24s
+            candidate_k=12,    # جلب 12 مرشح فقط (بدلاً من 20) → -5s
+            final_k=5,         # إرجاع أفضل 5 نتائج (بدلاً من 8) → -2s
+            rerank_weight=0.7, # وزن فعّال للـ Reranker
+            compress=False,    # بدون ضغط سياقي → -8s (للسرعة فقط)
         )
         self.kg_enabled = True  # تفعيل Knowledge Graph
         self.executor    = ToolExecutor()

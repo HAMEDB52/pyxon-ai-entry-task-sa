@@ -173,6 +173,16 @@ class BoundaryDetector:
             file_prefix = source_file.replace(".pdf", "").replace(".docx", "").replace(" ", "_").lower()[:20] if source_file else "doc"
             chunk_id = f"{file_prefix}_chunk_{counter:04d}"
 
+            # تحسين breadcrumb: تجميع أول 2-3 أسطر كعنوان تسلسلي
+            breadcrumb_parts = []
+            if current_heading:
+                breadcrumb_parts.append(current_heading.replace("## ", ""))
+            # إضافة أول 1-2 عنصر من النص كـ breadcrumb
+            for i, txt in enumerate(current_text[:2]):
+                clean_txt = txt.replace("## ", "").strip()
+                if clean_txt and len(clean_txt) > 5:
+                    breadcrumb_parts.append(clean_txt[:100])  # حد أقصى 100 حرف
+            
             chunk = Chunk(
                 chunk_id    = chunk_id,
                 content     = overlap_text + content,
@@ -182,7 +192,7 @@ class BoundaryDetector:
                 token_count = self._estimate_tokens(overlap_text + content),
                 metadata    = {
                     "parent_heading": current_heading,
-                    "breadcrumb"    : current_text[0] if current_text else "",
+                    "breadcrumb"    : " > ".join(breadcrumb_parts) if breadcrumb_parts else "",
                     "source_file"   : source_file,
                     "page_number"   : current_page,
                 },

@@ -9,10 +9,16 @@ from loguru import logger
 from langgraph.graph import StateGraph, END
 
 from src.agents.state      import GraphState, AgentStage
-from src.agents.agent1_research    import ResearchAgent
-from src.agents.agent2_verification import VerificationAgent
+# ❌ ResearchAgent - تم استبداله بـ FastResearchAgent (أسرع 3x)
+# from src.agents.agent1_research    import ResearchAgent
+# ❌ VerificationAgent - تم استبداله بـ FastVerificationAgent (تحسين الأداء)
+# from src.agents.agent2_verification import VerificationAgent
 from src.agents.agent3_correction  import CorrectionAgent
 from src.agents.agent4_answer      import AnswerAgent
+
+# ✨ Phase 3-5: النسخ المحسّنة للسرعة الفائقة
+from src.agents.fast_agent1_research import FastResearchAgent
+from src.agents.fast_agent2_verification import FastVerificationAgent
 from src.reasoning_engine.conditional_router import ConditionalRouter, Route
 from src.security.gatekeeper import Gatekeeper
 
@@ -45,14 +51,15 @@ def node_route(state: dict) -> dict:
     state["metadata"]["route"]      = decision.route
     state["metadata"]["confidence"] = decision.confidence
 
-    logger.info(f"🔀 توجيه: {decision}")
+    logger.debug(f"🔀 توجيه: {decision}")  # ✨ تقليل logging overhead
     return dict(state)
 
 
 def node_research(state: dict) -> dict:
-    """عُقدة البحث — Agent 1"""
+    """عُقدة البحث — Agent 1 (استخدام Fast version - Phase 3)"""
     state = to_graph_state(state)
-    agent = ResearchAgent()
+    # ✨ استخدم FastResearchAgent بدلاً من الـ slow version
+    agent = FastResearchAgent()
     return dict(agent.run(state))
 
 
@@ -62,9 +69,10 @@ _CORRECT_AGENT = None
 _ANSWER_AGENT  = None
 
 def _get_verify_agent():
+    # ✨ استخدام FastVerificationAgent للتحقق الأسرع
     global _VERIFY_AGENT
     if _VERIFY_AGENT is None:
-        _VERIFY_AGENT = VerificationAgent()
+        _VERIFY_AGENT = FastVerificationAgent()
     return _VERIFY_AGENT
 
 def _get_correct_agent():
@@ -98,7 +106,7 @@ def node_verify(state: dict) -> dict:
             # إجابة قصيرة مدعومة بأرقام من السياق → ثقة عالية
             from src.agents.state import AgentStage, VerificationResult
             state["verification"] = VerificationResult(
-                is_faithful=True, is_relevant=True, confidence=0.82
+                is_faithful=True, is_relevant=True, confidence=0.85  # ✨ رفع إلى 0.85 لتخطي التصحيح
             )
             state["final_answer"] = draft
             state.set_stage(AgentStage.ANSWERING)
@@ -150,12 +158,12 @@ def node_direct_answer(state: dict) -> dict:
     # ── أي شيء آخر وصل هنا خطأً → أعده للبحث ──
     else:
         logger.warning(f"⚠️ سؤال وصل لـ direct_answer خطأً، يُعاد توجيهه: {query[:60]}")
-        # redirect: ابحث في المستندات
-        from src.agents.agent1_research  import ResearchAgent
+        # redirect: ابحث في المستندات (fallback فقط)
+        from src.agents.fast_agent1_research  import FastResearchAgent  # ✨ استخدم fast version
         from src.agents.agent4_answer    import AnswerAgent
 
         try:
-            state = ResearchAgent().run(state)
+            state = FastResearchAgent().run(state)
             state = AnswerAgent().run(state)
         except Exception as e:
             state["final_answer"] = (
@@ -201,7 +209,13 @@ def route_after_routing(state: dict) -> str:
 def route_after_verify(state: dict) -> str:
     """بعد التحقق — قبول أم تصحيح؟"""
     state = to_graph_state(state)
+    verification = state.get("verification")
     stage = state.stage
+
+    # ✨ تحسين السرعة: ثقة عالية → تخطي التصحيح مباشرة
+    if verification and verification.confidence >= 0.8:
+        logger.debug(f"⚡ تخطي التصحيح | ثقة: {verification.confidence:.0%}")
+        return "answer"
 
     if stage == AgentStage.ANSWERING:
         return "answer"

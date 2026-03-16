@@ -148,7 +148,7 @@ class KnowledgeGraph:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         ) if api_key else None
-        self._model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self._model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self._setup_tables()
         logger.success("✅ KnowledgeGraph جاهز")
 

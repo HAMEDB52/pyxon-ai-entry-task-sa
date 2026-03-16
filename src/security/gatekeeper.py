@@ -132,7 +132,7 @@ class Gatekeeper:
                     api_key      = api_key,
                     http_options = types.HttpOptions(api_version="v1beta"),
                 )
-                self._model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+                self._model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
         logger.info(
             f"✅ Gatekeeper جاهز | "

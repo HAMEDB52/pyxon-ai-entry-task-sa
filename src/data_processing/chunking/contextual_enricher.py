@@ -65,7 +65,7 @@ class ContextualEnricher:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         ) if api_key and use_llm else None
-        self._model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+        self._model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
         logger.info(f"✅ ContextualEnricher | LLM={'✅' if self._client else '❌'}")
 
     # ════════════════════════════════════

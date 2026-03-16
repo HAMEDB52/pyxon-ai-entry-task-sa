@@ -56,7 +56,7 @@ class SummaryGenerator:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         )
-        model_name     = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
+        model_name     = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
         self.model_name = model_name
         logger.info(f"✅ SummaryGenerator جاهز | نموذج: {model_name}")
 

@@ -30,7 +30,7 @@ from src.database.relational_db import RelationalDB
 # الإعدادات
 # ============================================================
 
-DOCS_FOLDER  = "All_Invoices_Files"
+DOCS_FOLDER  = "All_Invoices_Files"  # مجلد يحتوي على المستندات
 
 # نستوعب هذه الأنواع فقط — نتجنب التكرار و .txt لا يدعمها Docling
 ALLOWED_EXTS = {".pdf", ".png", ".jpg", ".docx"}
@@ -52,7 +52,13 @@ SKIP_ON_OCR_ERROR = False       # إذا True: تخطى الملف إذا فشل
 # الدالة الرئيسية
 # ============================================================
 
-def ingest_all():
+def ingest_all(path_override: str = None):
+    """
+    إدخال جميع المستندات من المجلد أو ملف مفرد
+    
+    Args:
+        path_override: مسار بديل (ملف أو مجلد) بدلاً من DOCS_FOLDER
+    """
     logger.info("🚀 بدء عملية إدخال المستندات...")
 
     # 1. إعداد قاعدة البيانات
@@ -68,14 +74,27 @@ def ingest_all():
     store      = VectorStore()
     db         = RelationalDB()
 
-    # 3. جمع الملفات
-    folder = Path(DOCS_FOLDER)
-    files  = [
-        f for f in folder.iterdir()
-        if f.suffix.lower() in ALLOWED_EXTS
-    ]
-
-    logger.info(f"📁 وجدت {len(files)} ملف في {DOCS_FOLDER}")
+    # 3. جمع الملفات (ملف واحد أو مجلد كامل)
+    target_path = Path(path_override or DOCS_FOLDER)
+    
+    if target_path.is_file():
+        # ملف مفرد
+        if target_path.suffix.lower() in ALLOWED_EXTS:
+            files = [target_path]
+            logger.info(f"📄 معالجة ملف واحد: {target_path.name}")
+        else:
+            logger.error(f"❌ نوع ملف غير مدعوم: {target_path.suffix}")
+            return
+    elif target_path.is_dir():
+        # مجلد كامل
+        files = [
+            f for f in target_path.iterdir()
+            if f.suffix.lower() in ALLOWED_EXTS
+        ]
+        logger.info(f"📁 وجدت {len(files)} ملف في {target_path}")
+    else:
+        logger.error(f"❌ المسار غير موجود: {target_path}")
+        return
 
     success_count = 0
     skip_count    = 0
@@ -387,11 +406,12 @@ def ingest_single(file_path: Path):
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--file", default=None, help="مسار ملف واحد للإدخال")
+    ap.add_argument("--file", default=None, help="مسار ملف واحد أو مجلد كامل")
     args = ap.parse_args()
 
     if args.file:
-        # إدخال ملف واحد فقط
-        ingest_single(Path(args.file))
+        # إدخال ملف واحد أو مجلد
+        ingest_all(path_override=args.file)
     else:
+        # إدخال المجلد الافتراضي
         ingest_all()

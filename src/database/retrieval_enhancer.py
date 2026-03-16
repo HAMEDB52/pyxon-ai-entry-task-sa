@@ -103,7 +103,7 @@ class RetrievalEnhancer:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         ) if api_key else None
-        self._model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self._model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
         logger.success(
             f"✅ RetrievalEnhancer | "
@@ -200,6 +200,7 @@ class RetrievalEnhancer:
         """
         يُنتج N صياغات مختلفة للاستعلام الأصلي.
         يعمل بدون LLM كـ fallback.
+        يتخطى الصياغات المتشابهة جداً (جديد: smart similarity check).
         """
         queries = [query]   # ابدأ دائماً بالأصلي
 
@@ -235,12 +236,33 @@ class RetrievalEnhancer:
                 for line in response.text.strip().split("\n")
                 if line.strip() and len(line.strip()) > 3
             ]
-            # أضف الصياغات الجديدة (بدون تكرار الأصلي)
+            
+            # ✨ جديد: تصفية الصياغات المتشابهة جداً (Jaccard similarity > 0.85 → تخطي)
+            def jaccard_similarity(s1: str, s2: str) -> float:
+                """حساب Jaccard similarity بسيط بين نصين"""
+                words1 = set(s1.lower().split())
+                words2 = set(s2.lower().split())
+                if not words1 or not words2:
+                    return 0.0
+                intersection = len(words1 & words2)
+                union = len(words1 | words2)
+                return intersection / union if union > 0 else 0.0
+            
+            # أضف الصياغات الجديدة (بدون تكرار + بدون تشابه عالي جداً)
             for exp in expansions[:self.n_expansions]:
-                if exp.lower() != query.lower() and exp not in queries:
-                    queries.append(exp)
+                # تجاهل إذا كانت نفس الأصلية تماماً
+                if exp.lower() == query.lower():
+                    continue
+                # تجاهل إذا كانت متشابهة جداً (تكرار فعلي)
+                if any(jaccard_similarity(exp, existing) > 0.85 for existing in queries):
+                    logger.debug(f"   ⏭️ تخطي صياغة متشابهة: '{exp[:40]}'")
+                    continue
+                queries.append(exp)
+                # إذا وصلنا للعدد المطلوب، توقف
+                if len(queries) >= self.n_expansions + 1:
+                    break
 
-            logger.debug(f"   ✅ {len(queries)} صياغات")
+            logger.debug(f"   ✅ {len(queries)} صياغات (بعد تصفية التماثل)")
         except Exception as e:
             logger.warning(f"⚠️ فشل توسيع الاستعلام: {e}")
             # Fallback: توسيع بسيط بدون LLM

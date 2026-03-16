@@ -85,11 +85,13 @@ def setup_database():
                 -- البحث المتجهي
                 embedding      vector(768),
 
-                -- البحث النصي (BM25)
+                -- البحث النصي (BM25) - يدعم العربية والإنجليزية
                 fts_vector     tsvector GENERATED ALWAYS AS (
                     to_tsvector('simple',
                         coalesce(content,'') || ' ' ||
-                        coalesce(metadata->>'keywords','')
+                        coalesce(summary, '') || ' ' ||
+                        coalesce(parent_heading, '') || ' ' ||
+                        coalesce(array_to_string(keywords, ' '), '')
                     )
                 ) STORED,
 

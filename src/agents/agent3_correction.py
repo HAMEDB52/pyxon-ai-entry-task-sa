@@ -49,7 +49,7 @@ class CorrectionAgent:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         )
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         logger.info(f"✅ CorrectionAgent (Agent 3) جاهز | نموذج: {self.model_name}")
 
     # ============================================================

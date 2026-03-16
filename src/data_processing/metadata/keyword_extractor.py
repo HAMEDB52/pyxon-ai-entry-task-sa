@@ -94,7 +94,7 @@ class KeywordExtractor:
     def __init__(self, top_n: int = 10):
         self.top_n    = top_n
         self._client  = None
-        self._model   = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self._model   = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
         api_key = os.getenv("GOOGLE_API_KEY")
         if api_key:

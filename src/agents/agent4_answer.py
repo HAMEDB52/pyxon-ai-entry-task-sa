@@ -82,7 +82,7 @@ class AnswerAgent:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         )
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         logger.info(f"✅ AnswerAgent (Agent 4) جاهز | نموذج: {self.model_name}")
 
     # ============================================================
@@ -143,13 +143,18 @@ class AnswerAgent:
             verification = state.get("verification")
             confidence   = verification.confidence if verification else 0.7
 
-            # --- تحسين التنسيق ---
-            polished = self._polish_answer(
-                query   = state.query,
-                answer  = base_answer,
-                context = state.build_context(max_chunks=8),
-                sources = sources,
-            )
+            # --- تحسين التنسيق (فقط للإجابات الطويلة) ---
+            # ✨ إذا الإجابة قصيرة وواضحة → بدون polishing
+            if len(base_answer) < 200 and len(base_answer.split()) >= 3:
+                polished = base_answer
+                logger.debug("⚡ إجابة قصيرة → بدون polishing")
+            else:
+                polished = self._polish_answer(
+                    query   = state.query,
+                    answer  = base_answer,
+                    context = state.build_context(max_chunks=4),  # ✨ تقليل من 8 إلى 4
+                    sources = sources,
+                )
 
             # --- أسئلة متابعة ---
             followup_qs = self._generate_followup(

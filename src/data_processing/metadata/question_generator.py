@@ -63,7 +63,7 @@ class QuestionGenerator:
             api_key      = api_key,
             http_options = types.HttpOptions(api_version="v1beta"),
         )
-        model_name         = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        model_name         = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.model_name    = model_name
         self.num_questions = num_questions
         logger.info(f"✅ QuestionGenerator جاهز | {num_questions} أسئلة لكل قطعة")

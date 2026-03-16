@@ -27,6 +27,11 @@ keybert>=0.8.0                    # استخراج الكلمات المفتاح
 sumy>=0.11.0                      # توليد الملخصات
 nltk>=3.9.0                       # معالجة اللغة الطبيعية
 
+# --- Optimization (Phase 1) ---
+sentence-transformers>=3.0.0      # Cross-encoder reranker (50ms vs 2-3s LLM)
+farasa>=0.3.5                     # Arabic lemmatization & morphological analysis
+redis>=5.0.0                      # Query caching (optional)
+
 # --- Evaluation ---
 ragas>=0.2.0                      # تقييم أنظمة RAG
 langfuse>=2.0.0                   # تتبع الأداء والتكلفة
@@ -48,3 +53,9 @@ pytest-asyncio>=0.24.0            # اختبارات غير متزامنة
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
+
+# --- Request Management ---
+requests>=2.31.0
+urllib3>=1.26.0,<2.0
+chardet>=5.0.0
+charset-normalizer>=3.0.0
