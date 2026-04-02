@@ -31,7 +31,8 @@ class ArabicLemmatizer:
     1. إزالة الدوال (ال، و، ب، ل)
     2. استخراج الجذور (lemmatization)
     3. معالجة الأحرف المختلفة (ة، ي، ا التمديد)
-    
+    4. دعم التشكيل العربي (harakat)
+
     الاستخدام:
         lemmatizer = ArabicLemmatizer()
         root = lemmatizer.get_root("فواتير")  → "فاتورة"
@@ -101,9 +102,114 @@ class ArabicLemmatizer:
         return text.strip()
     
     def _remove_diacritics(self, text: str) -> str:
-        """إزالة التشكيل (الفتحة، الكسرة، الضمة، إلخ)"""
+        """
+        إزالة التشكيل (الفتحة، الكسرة، الضمة، إلخ)
+        
+        التشكيل العربي يشمل:
+        - الفتحة: َ
+        - الضمة: ُ
+        - الكسرة: ِ
+        - الشدة: ّ
+        - السكون: ْ
+        - التنوين: ً ٌ ٍ
+        - المد: ٓ
+        """
+        if not text:
+            return ""
+        
+        # نمط شامل لجميع علامات التشكيل العربي
+        diacritics_pattern = r'[\u064B-\u065F\u0670]'
+        text = re.sub(diacritics_pattern, '', text)
+        
+        # إزالة التشكيل القديم كـ fallback
         arabic_diacritics = "ًٌٍَُِّْـ"
         return "".join(char for char in text if char not in arabic_diacritics)
+
+    def preserve_diacritics(self, text: str) -> str:
+        """
+        الحفاظ على التشكيل العربي كما هو
+        يُستخدم عند تخزين النصوص المهمة دينياً أو الشعر
+        
+        Args:
+            text: النص العربي مع التشكيل
+            
+        Returns:
+            النص مع الحفاظ على التشكيل
+        """
+        if not text:
+            return ""
+        
+        # تطبيع Unicode مع الحفاظ على التشكيل
+        import unicodedata
+        normalized = unicodedata.normalize('NFC', text)
+        return normalized
+
+    def normalize_with_diacritics(self, text: str, remove_tashkeel: bool = False) -> str:
+        """
+        تطبيع النص العربي مع خيار إزالة/الحفاظ على التشكيل
+        
+        Args:
+            text: النص العربي
+            remove_tashkeel: إذا True، يزيل التشكيل
+            
+        Returns:
+            النص المطبع
+        """
+        if not text:
+            return ""
+        
+        if remove_tashkeel:
+            text = self._remove_diacritics(text)
+        
+        # توحيد الحروف المختلفة
+        text = text.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
+        text = text.replace("ة", "ه")
+        text = text.replace("ؤ", "ء").replace("ئ", "ء")
+        text = text.replace("ى", "ي")
+        
+        # إزالة الفراغات الزائدة
+        text = " ".join(text.split())
+        
+        return text.strip()
+
+    def extract_diacritics_pattern(self, text: str) -> str:
+        """
+        استخراج نمط التشكيل من النص
+        مفيد للتحقق من النصوص القرآنية أو الشعر
+        
+        Returns:
+            سلسلة تمثل نمط التشكيل
+        """
+        if not text:
+            return ""
+        
+        diacritics = []
+        diacritics_pattern = r'[\u064B-\u065F\u0670]'
+        
+        for char in text:
+            if re.match(diacritics_pattern, char):
+                diacritics.append(char)
+        
+        return ''.join(diacritics)
+
+    def compare_with_diacritics(self, text1: str, text2: str) -> bool:
+        """
+        مقارنة نصين عربيين مع تجاهل التشكيل
+        
+        Args:
+            text1: النص الأول
+            text2: النص الثاني
+            
+        Returns:
+            True إذا كان النصان متطابقين بدون تشكيل
+        """
+        if not text1 or not text2:
+            return text1 == text2
+        
+        norm1 = self.normalize_with_diacritics(text1, remove_tashkeel=True)
+        norm2 = self.normalize_with_diacritics(text2, remove_tashkeel=True)
+        
+        return norm1 == norm2
     
     def get_root(self, word: str) -> Optional[str]:
         """

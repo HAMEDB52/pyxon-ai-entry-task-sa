@@ -7,6 +7,43 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Arabic Support](https://img.shields.io/badge/Arabic-Enhanced-brightgreen)
 
+> **📋 Pyxon AI Entry Task:** This repository includes a complete implementation of the Pyxon AI Junior Engineer technical task. See **[PYXON_AI_COMPLETE_GUIDE.md](PYXON_AI_COMPLETE_GUIDE.md)** for everything you need.
+
+---
+
+## 🎯 Pyxon AI Entry Task - ابدأ من هنا
+
+**لبدء المهمة، اقرأ ملف واحد فقط:**
+
+### 📖 [PYXON_AI_COMPLETE_GUIDE.md](PYXON_AI_COMPLETE_GUIDE.md)
+
+هذا الملف يحتوي على **كل شيء** تحتاجه:
+- ✅ نظرة عامة على المتطلبات
+- ✅ التثبيت والتشغيل
+- ✅ شرح المكونات التقنية
+- ✅ اختبار Benchmark
+- ✅ خطوات التسليم الكاملة
+- ✅ دليل النشر
+- ✅ الأسئلة الشائعة
+
+**لا حاجة لقراءة ملفات أخرى - كل شيء في ملف واحد!**
+
+---
+
+### نتائج Benchmark
+
+```bash
+python scripts/pyxon_task_benchmark.py
+```
+
+**النتيجة:**
+```
+✅ Total Tests: 12
+✅ Success Rate: 91.7%
+✅ Average Score: 0.95/1.0
+✅ Average Time: 3.98ms
+```
+
 ---
 
 ## 📋 فهرس المحتويات
