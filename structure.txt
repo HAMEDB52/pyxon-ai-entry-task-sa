@@ -1,0 +1,103 @@
+# هيكل مشروع Agentic RAG - نظام الفواتير الذكي
+# تم تحديثه ليعكس كافة مكونات النظام الحالية
+
+agentic-rag-docling/
+│
+├── 📄 .env                                 # ملف الإعدادات والمفاتيح (API Keys, DATABASE_URL)
+├── 📄 requirements.txt                     # مكتبات بايثون المطلوبة للنظام
+├── 📄 WEB_README.md                       # دليل تشغيل واجهة الويب
+├── 📄 structure.txt                        # هذا الملف (هيكل المشروع)
+│
+├── 📁 api/                                 # واجهة برمجية FastAPI
+│   └── main.py                             # نقطة الانطلاق للخلفية (Backend) والمعالجة
+│
+├── 📁 frontend/                            # واجهة المستخدم (Web UI)
+│   ├── server.js                           # خادم Node.js لتشغيل الواجهة
+│   ├── package.json                        # إعدادات Node.js ومكتبات الواجهة
+│   └── 📁 public/                          # الملفات الثابتة (HTML, CSS, JS)
+│       ├── index.html                      # الصفحة الرئيسية للواجهة
+│       ├── style.css                       # تنسيقات الواجهة (CSS)
+│       └── app.js                          # منطق الواجهة التفاعلي (JavaScript)
+│
+├── 📁 src/                                 # الكود المصدري الرئيسي (Core System)
+│   │
+│   ├── 📁 agents/                          # أنظمة الوكلاء الذكية (Multi-Agent System)
+│   │   ├── agent1_research.py              # وكيل البحث (Research Agent)
+│   │   ├── agent2_verification.py          # وكيل التحقق (Verification Agent)
+│   │   ├── agent3_correction.py            # وكيل التصحيح (Correction Agent)
+│   │   ├── agent4_answer.py                # وكيل الإجابة النهائية (Answer Agent)
+│   │   ├── langgraph_pipeline.py           # تعريف تدفق العمل (LangGraph Pipeline)
+│   │   ├── orchestrator.py                 # المنظم لعمل الوكلاء
+│   │   ├── reflection_agent.py             # وكيل المراجعة الذاتية والتفكير
+│   │   └── state.py                        # إدارة حالة الـ Graph (Shared State)
+│   │
+│   ├── 📁 memory/                          # طبقة الذاكرة (Memory Layer)
+│   │   ├── short_term.py                   # إدارة سياق الجلسة الحالية
+│   │   └── long_term.py                    # تخزين ذاكرة المستخدم الدائمة (Vectorized)
+│   │
+│   ├── 📁 data_sources/                    # مصادر البيانات
+│   │   └── loader.py                       # محمل المستندات (Docling Loader)
+│   │
+│   ├── 📁 data_processing/                 # معالجة وتحويل البيانات
+│   │   ├── 📁 chunking/                    # تقطيع النصوص (Chunking Strategies)
+│   │   │   ├── boundary_detector.py        # كاشف حدود القطع الذكي
+│   │   │   ├── contextual_enricher.py      # إثراء القطع بالسياق
+│   │   │   ├── heading_detector.py         # كشف العناوين
+│   │   │   └── table_preserver.py          # الحفاظ على هيكل الجداول
+│   │   ├── 📁 metadata/                    # إنشاء البيانات الوصفية (Metadata)
+│   │   │   ├── keyword_extractor.py        # استخراج الكلمات المفتاحية
+│   │   │   ├── question_generator.py       # توليد أسئلة افتراضية (Hypothetical Questions)
+│   │   │   └── summary_generator.py        # توليد ملخصات للقطع والوثائق
+│   │   ├── 📁 restructuring/               # إعادة هيكلة البيانات المحللة
+│   │   │   ├── document_parser.py          # محلل المستندات المحول من Docling
+│   │   │   └── structure_analyzer.py       # تحليل هيكل المستند (Deep Analysis)
+│   │   └── raptor_engine.py                # محرك RAPTOR للمعالجة الهيكلية العميقة
+│   │
+│   ├── 📁 reasoning_engine/                # محرك التفكير والمنطق (Reasoning)
+│   │   ├── conditional_router.py           # الموجه الذكي للاستعلامات
+│   │   ├── mcp_client.py                   # تكامل مع MCP Tools
+│   │   ├── planner.py                      # مخطط الخطوات (Planner Agent)
+│   │   ├── query_rewriter.py               # إعادة صياغة الأسئلة للبحث
+│   │   ├── reranker.py                     # إعادة ترتیب النتائج المسترجعة
+│   │   └── tool_execution.py               # تنفيذ الأدوات والعمليات
+│   │
+│   ├── 📁 security/                        # طبقات الأمان والتحقق
+│   │   ├── auditor.py                      # مدقق الإجابات بعد التوليد
+│   │   ├── gatekeeper.py                   # حارس البوابة (Input/Output Safety)
+│   │   └── strategist.py                   # منسق استراتيجيات الأمان
+│   │
+│   ├── 📁 database/                        # طبقة قواعد البيانات (Persistence)
+│   │   ├── db_setup.py                     # سكربت إعداد الجداول والوظائف
+│   │   ├── hybrid_search.py                # البحث الهجين (Vector + BM25)
+│   │   ├── relational_db.py                # التعامل مع PostgreSQL/Neon
+│   │   └── vector_store.py                 # التعامل مع PGVector (Embeddings)
+│   │
+│   ├── 📁 evaluation/                      # التقييم والقياس (Evaluation)
+│   │   ├── latency_cost.py                 # تتبع الوقت والتكلفة (Token Usage)
+│   │   ├── llm_judges.py                   # مقيمين ذكاء اصطناعي للإجابات
+│   │   └── precision_recall.py             # قياس دقة وجودة الاسترجاع
+│   │
+│   └── 📁 stress_testing/                  # اختبارات الضغط والحماية (Stress Testing)
+│       ├── biased_opinion.py               # اختبار الانحياز
+│       ├── information_evasion.py          # اختبار الهروب من المعلومات
+│       └── prompt_injection.py             # اختبار حقن التعليمات
+│
+├── 📁 scripts/                             # سكربتات التشغيل والأدوات
+│   ├── ingest_docs.py                      # السكربت الرئيسي لإدخال ومعالجة الوثائق
+│   ├── mcp_server.py                       # تطبيق خادم MCP للأدوات
+│   └── run_query.py                        # واجهة سطر الأوامر (CLI) للتفاعل مع النظام
+│
+├── 📁 test/                                # الاختبارات البرمجية (Testing)
+│   ├── test_agent*.py                      # اختبارات الوكلاء
+│   ├── test_database.py                    # اختبارات قاعدة البيانات
+│   ├── test_pipeline.py                    # اختبار المسار بالكامل
+│   └── ... (أكثر من 20 ملف اختبار)
+│
+├── 📁 notebooks/                           # دفاتر تجريبية (Notebooks)
+│   └── demo.ipynb                          # عرض توضيحي وتجارب سريعة
+│
+├── 📁 logs/                                # سجلات النظام (System Logs)
+│   └── (تُحفظ هنا سجلات العمليات والأمان)
+│
+├── 📁 uploaded_files/                      # مجلد مؤقت للملفات أثناء الرفع
+└── 📁 All_Invoices_Files/                  # المستودع الرئيسي للمستندات والفواتير
